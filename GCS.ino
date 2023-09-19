@@ -52,26 +52,34 @@ void setup() {
 }
  
 void loop() {
+  if(Serial.available()>0){
+  Command = Serial.readStringUntil('\n');
+  if(Command.startsWith("CMD,TEAM C,CX")){
   read_packet();
+  }else if(Command.equals("CMD,TEAM C,CAL")){
   cal_alt();
+  }else if(Command.equals("CMD,TEAM C,ST")){
   processCommand();
-  BCN();
+  }else if(Command.startsWith("CMD,TEAM C,BCN")){
+    BCN();
+  }else if(Command.equals("CMD,TEAM C,SIM,Enable")){
   SIM_Enable();
+  }else if(Command.equals("CMD,TEAM C,SIM,ACTIVATE")){
   SIM_Activate();
+  }else if(Command.startsWith("CMD,TEAM C,SIMP")){
   simping_for_pressure();
+  }
   
   delay(100);
-
+  }
 }
 void read_packet() {
     allowReading = false;
-    if(Serial.available()>0){
-      Command = Serial.readStringUntil('\n');
       if (Command.equals("CMD,TEAM C,CX,ON")){
         allowReading = true;
         Serial.println("Start Reading");
       }
-    }
+    
     while (allowReading == true) {
       Serial.println(".");
       if(Serial.available()>0){
@@ -122,9 +130,8 @@ void read_packet() {
 
 void cal_alt() {
  
-  
-  if (Serial.available()>0) {
-    Command = Serial.readStringUntil('\n');
+ 
+    Serial.println("Received Command");
     if (Command.equals("CMD,TEAM C,CAL")){
       Serial.println("Calibrating Altitude");
        
@@ -138,13 +145,12 @@ void cal_alt() {
     }
   }
   
-}
+
 void processCommand() {
-  if(Serial.available()>0){
-    Command = Serial.readStringUntil('\n');
-String    expectedCommand = "CMD,Team C,ST";
     
-  
+String expectedCommand = "CMD,Team C,ST";
+    
+  Serial.println("It works...");
   if (Command.startsWith(expectedCommand)) {
    
     String timePart = Command.substring(expectedCommand.length());
@@ -158,7 +164,7 @@ String    expectedCommand = "CMD,Team C,ST";
     }
   }
 }
-}
+
 
 void getTimeFromGPS() {
  uint8_t set_gps_time[] = {"CMD,C,ST,GPS"};
@@ -180,47 +186,40 @@ void setMissionTime(String time) {
 }
 
 void BCN() {
-  if(Serial.available()>0){
-    Command = Serial.readStringUntil('\n');
     if(Command.equals("CMD,TEAM C,BCN,ON")){
       uint8_t audio = {"BCN ON"};
-
+      Serial.println("Whats up");
       tx.setPayload(audio,sizeof(audio));
       tx= ZBTxRequest(addr64, audio, sizeof(audio));
       xbee.send(tx);
     }
   }
-}
+
 
 void SIM_Enable() {
-  if(Serial.available()>0){
-    Command = Serial.readStringUntil('\n');
-    if(Command.equals("CMD,TEAM C,SIM, Enable")){
+    if(Command.equals("CMD,TEAM C,SIM,Enable")){
       uint8_t enable = {"Enable Simulation"};
-
+      Serial.println("My Son");
       tx.setPayload(enable,sizeof(enable));
       tx= ZBTxRequest(addr64,enable, sizeof(enable));
       xbee.send(tx);
     }
   }
-}
+
 
 void SIM_Activate() {
-  if(Serial.available()>0){
-    Command = Serial.readStringUntil('\n');
     if(Command.equals("CMD,TEAM C,SIM,ACTIVATE")){
       uint8_t activate= {"Enable Activation"};
-
+      Serial.println("lets go");
       tx.setPayload(activate,sizeof(activate));
       tx= ZBTxRequest(addr64,activate,sizeof(activate));
       xbee.send(tx);
     }
   }
-}
+
 void simping_for_pressure() {
-  if(Serial.available()>0){
-    Command = Serial.readStringUntil('\n');
     String expectedCommand = "CMD,Team C,SIMP";
+    Serial.println("jhdfh");
     if(Command.startsWith(expectedCommand)){
       String subCommand = Command.substring(expectedCommand.length());
       int arrayLength = subCommand.length();
@@ -239,4 +238,3 @@ void simping_for_pressure() {
     }
       
   }
-}
