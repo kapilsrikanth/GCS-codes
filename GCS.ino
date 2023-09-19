@@ -26,7 +26,8 @@ String rotZ;
 String Command;
 String CMD_ECHO;
 String telemetryValues [20];
-
+bool allowReading;
+bool calibrateAltitude;
 XBee xbee;
 
 XBeeResponse response;
@@ -36,10 +37,10 @@ ZBTxRequest tx;
 XBeeAddress64 addr64 = XBeeAddress64(0x0013A200, 0x12345678);
 uint32_t highAddress = 0x0013A200;
 uint32_t lowAddress = 0x12345678;
-bool allowReading = true;
+
 void setup() {
   // put your setup code here, to run once:
-   Serial.begin(115200);
+   Serial.begin(9600);
     xbee.setSerial(Serial);
     XBeeAddress64(highAddress,lowAddress);
 
@@ -48,91 +49,96 @@ void setup() {
 }
  
 void loop() {
-  if(Serial.available()){
-    Command = Serial.readStringUntil('\n');
-  
-    read_packet();
-    cal_alt();
-    processCommand();
+  read_packet();
+
+  delay(100);
+
 }
-}
- 
-
-
-
-void read_packet(){
-    
-    
-    if (allowReading) {
-       Serial.println("Hi");
+void read_packet() {
+    allowReading = false;
+    if(Serial.available()>0){
+      Command = Serial.readStringUntil('\n');
+      if (Command.equals("CMD,TEAM C,CX,ON")){
+        allowReading = true;
+        Serial.println("Start Reading");
+      }
+    }
+    while (allowReading == true) {
+      Serial.println(".");
+      if(Serial.available()>0){
+        Command = Serial.readStringUntil('\n');
+        if (Command.equals("CMD,TEAM C,CX,OFF")){
+          allowReading = false;
+          Serial.println("Stop Reading");
+        }
+      }
+      else{
         xbee.readPacket();
-        
         if (xbee.getResponse().isAvailable()) {
             if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
-                xbee.getResponse().getRx16Response(rx);
-                for (int i = 0; i < rx.getDataLength(); i++) {
-                    telemetryValues[i]= rx.getData(i);
-                    
-                    
-                }
-        telemetryValues[0] =  Team_ID;
-        
-        telemetryValues[1] =  MISSION_time;
-        telemetryValues[2] =  packet_count;
-        telemetryValues[3] =  MODE;
-        telemetryValues[4] =  state;
-        telemetryValues[5] =  alt;
-        telemetryValues[6] =  airSpeed;
-        telemetryValues[7] =  HS_DEP;
-        telemetryValues[8] =  PC_DEP;
-        telemetryValues[9] =  temp;
-        telemetryValues[10] = volt;
-        telemetryValues[11] = GPS_time;
-        telemetryValues[12] = GPS_alt;
-        telemetryValues[13] = GPS_long;
-        telemetryValues[14] = GPS_lat;
-        telemetryValues[15] = GPS_sats;
-        telemetryValues[16] = TiltX;
-        telemetryValues[17] = tilty;
-        telemetryValues[18] = rotZ;
-        telemetryValues[19] = CMD_ECHO;
-  
+              xbee.getResponse().getRx16Response(rx);
+              for (int i = 0; i < rx.getDataLength(); i++) {
+                telemetryValues[i]= rx.getData(i);                    
+              }
+              telemetryValues[0] =  Team_ID;
+              
+              telemetryValues[1] =  MISSION_time;
+              telemetryValues[2] =  packet_count;
+              telemetryValues[3] =  MODE;
+              telemetryValues[4] =  state;
+              telemetryValues[5] =  alt;
+              telemetryValues[6] =  airSpeed;
+              telemetryValues[7] =  HS_DEP;
+              telemetryValues[8] =  PC_DEP;
+              telemetryValues[9] =  temp;
+              telemetryValues[10] = volt;
+              telemetryValues[11] = GPS_time;
+              telemetryValues[12] = GPS_alt;
+              telemetryValues[13] = GPS_long;
+              telemetryValues[14] = GPS_lat;
+              telemetryValues[15] = GPS_sats;
+              telemetryValues[16] = TiltX;
+              telemetryValues[17] = tilty;
+              telemetryValues[18] = rotZ;
+              telemetryValues[19] = CMD_ECHO;
             }
-        
-      Serial.println(Team_ID + ", " + MISSION_time + ", " + packet_count + ". " + MODE + ", " + state + ", " + alt + ", " + airSpeed + ", " + HS_DEP + ", " + PC_DEP + ", " + temp + ", " + volt + ", " + GPS_time + ", " + GPS_alt + ", " + GPS_long + ", " + GPS_lat + ", " + GPS_sats + ", " + TiltX + ", " + tilty + ", " + rotZ + ", " + CMD_ECHO);
-        }
-      
+          }
+      }
+      //Serial.print(Team_ID + ", " + MISSION_time + ", " + packet_count + ". " + MODE + ", " + state + ", " + alt + ", " + ", " + airSpeed + ", " + HS_DEP + ", " + PC_DEP + ", " + temp + ", " + volt + ", " + GPS_time + ", " + GPS_alt + ", " + GPS_long + ", " + GPS_lat + ", " + GPS_sats + ", " + TiltX + ", " + tilty + ", " + rotZ + ", " + CMD_ECHO);
+      delay(100);
     }
 }
 
+
+
 void cal_alt() {
  
-    if(Command.equals("CMD,C,CAL")){
-       char data_to_be_sent = "CMD,C,CAL";
+  
+  if (Serial.available()>0) {
+    Command = Serial.readStringUntil('\n');
+    if (Command.equals("CMD,TEAM C,CAL")){
+      Serial.println("Calibrating Altitude");
+       
+       
+       char data_to_be_sent = "Calibrate Altitude to Zero";
        
        tx.setPayload(data_to_be_sent, sizeof(data_to_be_sent));
        tx= ZBTxRequest(addr64, data_to_be_sent, sizeof(data_to_be_sent));
        xbee.send(tx);   
 
     }
-
+  }
+  
 }
-
-
-
-
-void setup() {
-  Serial.begin(9600); 
-   
-}
-
-
-
 void processCommand() {
-
-  if (Command.startsWith("CMD," + teamID + ",ST,")) {
+  if(Serial.available()>0){
+    Command = Serial.readStringUntil('\n');
+String    expectedCommand = "CMD,Team C,ST";
+    
+  
+  if (Command.startsWith(expectedCommand)) {
    
-    String timePart = command.substring(14);
+    String timePart = Command.substring(expectedCommand.length());
     
     if (timePart.equals("GPS")) {
       
@@ -142,6 +148,7 @@ void processCommand() {
       setMissionTime(timePart);
     }
   }
+}
 }
 
 void getTimeFromGPS() {
@@ -154,10 +161,66 @@ void getTimeFromGPS() {
 }
 
 void setMissionTime(String time) {
- char set_utc_time = Command;
+ char set_utc_time[Command.length()];
+ Command.toCharArray(set_utc_time, sizeof(set_utc_time));
+ 
        
-       tx.setPayload(set_utc_time, sizeof(set_gps_time));
-       tx= ZBTxRequest(addr64, set_gps_time, sizeof(set_utc_time));
+       tx.setPayload(set_utc_time, sizeof(set_utc_time));
+       tx= ZBTxRequest(addr64, set_utc_time, sizeof(set_utc_time));
        xbee.send(tx);
   
+}
+
+void BCN() {
+  if(Serial.available()>0){
+    Command = Serial.readStringUntil('\n');
+    if(Command.equals("CMD,TEAM C,BCN,ON")){
+      char audio = "BCN ON";
+
+      tx.setPayload(audio,sizeof(audio));
+      tx= ZBTxRequest(addr64, audio, sizeof(audio));
+      xbee.send(tx);
+    }
+  }
+}
+
+void SIM_Enable() {
+  if(Serial.available()>0){
+    Command = Serial.readStringUntil('\n');
+    if(Command.equals("CMD,TEAM C,SIM, Enable")){
+      char enable = "Enable Simulation";
+
+      tx.setPayload(enable,sizeof(enable));
+      tx= ZBTxRequest(addr64,enable, sizeof(enable));
+      xbee.send(tx);
+    }
+  }
+}
+
+void SIM_Activate() {
+  if(Serial.available()>0){
+    Command = Serial.readStringUntil('\n');
+    if(Command.equals("CMD,TEAM C,SIM,ACTIVATE")){
+      char activate= "Enable Activation";
+
+      tx.setPayload(activate,sizeof(activate));
+      tx= ZBTxRequest(addr64,activate,sizeof(activate));
+      xbee.send(tx);
+    }
+  }
+}
+void simping_for_pressure() {
+  if(Serial.available()>0){
+    Command = Serial.readStringUntil('\n');
+    String expectedCommand = "CMD,Team C,SIMP";
+    if(Command.startsWith(expectedCommand)){
+      char sim_pressure[Command.length()];
+      Command.toCharArray(sim_pressure,sizeof(sim_pressure));
+      tx.setPayload(sim_pressure,sizeof(sim_pressure));
+      tx= ZBTxRequest(addr64,sim_pressure,sizeof(sim_pressure));
+      xbee.send(tx);
+      
+    }
+      
+  }
 }
