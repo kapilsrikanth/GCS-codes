@@ -6,7 +6,7 @@ SoftwareSerial mySerial (9,10);
 
 #define MAX_FRAME_DATA_SIZE 110
 String packet_count;
-String Team_ID;
+String Team_ID = "C";
 String MISSION_time;
 String MODE;
 
@@ -53,7 +53,13 @@ void setup() {
  
 void loop() {
   read_packet();
-
+  cal_alt();
+  processCommand();
+  BCN();
+  SIM_Enable();
+  SIM_Activate();
+  simping_for_pressure();
+  
   delay(100);
 
 }
@@ -75,13 +81,13 @@ void read_packet() {
           Serial.println("Stop Reading");
         }
       }
-      else{
+      else if (mySerial.available()>0){
         xbee.readPacket();
         if (xbee.getResponse().isAvailable()) {
             if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
               xbee.getResponse().getRx16Response(rx);
               for (int i = 0; i < rx.getDataLength(); i++) {
-                telemetryValues[i]= rx.getData(i);                    
+                telemetryValues[i] += static_cast<char>(rx.getData()[i]);                    
               }
               telemetryValues[0] =  Team_ID;
               
@@ -123,7 +129,7 @@ void cal_alt() {
       Serial.println("Calibrating Altitude");
        
        
-       char data_to_be_sent = "Calibrate Altitude to Zero";
+       uint8_t data_to_be_sent[] = {"Calibrate Altitude to Zero"};
        
        tx.setPayload(data_to_be_sent, sizeof(data_to_be_sent));
        tx= ZBTxRequest(addr64, data_to_be_sent, sizeof(data_to_be_sent));
@@ -155,7 +161,7 @@ String    expectedCommand = "CMD,Team C,ST";
 }
 
 void getTimeFromGPS() {
- char set_gps_time = "CMD,C,ST,GPS";
+ uint8_t set_gps_time[] = {"CMD,C,ST,GPS"};
        
        tx.setPayload(set_gps_time, sizeof(set_gps_time));
        tx= ZBTxRequest(addr64, set_gps_time, sizeof(set_gps_time));
@@ -164,9 +170,8 @@ void getTimeFromGPS() {
 }
 
 void setMissionTime(String time) {
- char set_utc_time[Command.length()];
- Command.toCharArray(set_utc_time, sizeof(set_utc_time));
- 
+ uint8_t set_utc_time[] = {"CMD,C,ST,UTC"};
+
        
        tx.setPayload(set_utc_time, sizeof(set_utc_time));
        tx= ZBTxRequest(addr64, set_utc_time, sizeof(set_utc_time));
@@ -178,7 +183,7 @@ void BCN() {
   if(Serial.available()>0){
     Command = Serial.readStringUntil('\n');
     if(Command.equals("CMD,TEAM C,BCN,ON")){
-      char audio = "BCN ON";
+      uint8_t audio = {"BCN ON"};
 
       tx.setPayload(audio,sizeof(audio));
       tx= ZBTxRequest(addr64, audio, sizeof(audio));
@@ -191,7 +196,7 @@ void SIM_Enable() {
   if(Serial.available()>0){
     Command = Serial.readStringUntil('\n');
     if(Command.equals("CMD,TEAM C,SIM, Enable")){
-      char enable = "Enable Simulation";
+      uint8_t enable = {"Enable Simulation"};
 
       tx.setPayload(enable,sizeof(enable));
       tx= ZBTxRequest(addr64,enable, sizeof(enable));
@@ -204,7 +209,7 @@ void SIM_Activate() {
   if(Serial.available()>0){
     Command = Serial.readStringUntil('\n');
     if(Command.equals("CMD,TEAM C,SIM,ACTIVATE")){
-      char activate= "Enable Activation";
+      uint8_t activate= {"Enable Activation"};
 
       tx.setPayload(activate,sizeof(activate));
       tx= ZBTxRequest(addr64,activate,sizeof(activate));
@@ -217,10 +222,21 @@ void simping_for_pressure() {
     Command = Serial.readStringUntil('\n');
     String expectedCommand = "CMD,Team C,SIMP";
     if(Command.startsWith(expectedCommand)){
-      char sim_pressure[Command.length()];
-      Command.toCharArray(sim_pressure,sizeof(sim_pressure));
-      tx.setPayload(sim_pressure,sizeof(sim_pressure));
-      tx= ZBTxRequest(addr64,sim_pressure,sizeof(sim_pressure));
+      String subCommand = Command.substring(expectedCommand.length());
+      int arrayLength = subCommand.length();
+      uint8_t sim_pressure1[arrayLength];
+      if (arrayLength > 0 && arrayLength <= sizeof(sim_pressure1)) {
+        for (int i = 0; i < arrayLength; i++) {
+        sim_pressure1[i] = static_cast<uint8_t>(subCommand.charAt(i));
+    }
+      } else {
+   
+}
+
+
+
+      tx.setPayload(sim_pressure1,sizeof(sim_pressure1));
+      tx= ZBTxRequest(addr64,sim_pressure1,sizeof(sim_pressure1));
       xbee.send(tx);
       
     }
