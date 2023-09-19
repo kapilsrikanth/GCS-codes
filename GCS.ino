@@ -232,9 +232,6 @@ void simping_for_pressure() {
       } else {
    
 }
-
-
-
       tx.setPayload(sim_pressure1,sizeof(sim_pressure1));
       tx= ZBTxRequest(addr64,sim_pressure1,sizeof(sim_pressure1));
       xbee.send(tx);
