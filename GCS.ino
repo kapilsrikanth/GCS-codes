@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <Printers.h>
 #include <XBee.h>
+#include <SoftwareSerial.h>
+SoftwareSerial mySerial (9,10);
 
 #define MAX_FRAME_DATA_SIZE 110
 String packet_count;
@@ -41,7 +43,8 @@ uint32_t lowAddress = 0x12345678;
 void setup() {
   // put your setup code here, to run once:
    Serial.begin(9600);
-    xbee.setSerial(Serial);
+    mySerial.begin(9600);
+    xbee.setSerial(mySerial);
     XBeeAddress64(highAddress,lowAddress);
 
     
